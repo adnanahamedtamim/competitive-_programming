@@ -2,6 +2,7 @@
 using namespace std;
 
 struct Line {
+    // k -> slope, m -> denotes c in y=mx+c; p-> int x where it gives max value
     mutable long long k, m, p;
     bool operator<(const Line& o) const { return k < o.k; }
     bool operator<(long long x) const { return p < x; }
