@@ -81,3 +81,16 @@ struct DynHash {
         return (r1_ - l1 == r2_ - l2) && sub(l1, r1_) == sub(l2, r2_);
     }
 };
+int main(){
+    DynHash h(n);        // once per test, pass the max possible length
+    h.push('a');
+    h.push('b');
+    h.push('a');
+    h.isPal();           // true  ("aba")
+    h.pop();
+    h.isPal();           // false ("ab")
+    h.get();             // hash pair of current string
+    h.sub(0, 1);         // hash of substring [0,1)
+    h.isPal(0, 3);       // palindrome check on any substring of the current string
+
+}
