@@ -12,19 +12,19 @@ typedef long double ld;
 
 #define pb push_back
 #define all(x) x.begin(), x.end()
-// #define endl '\n'
+#define endl '\n'
 #define YES cout<<"YES"<<endl
 #define NO cout<<"NO"<<endl
 #define Yes cout<<"Yes"<<endl
 #define No cout<<"No"<<endl
-// #define endl "\n"
+#define endl "\n"
  
 // #define isSet(x, i) ((x>>i)&1)
 // #define setbit(x, i) (x | (1LL<<i))
 // #define resetbit(x, i) (x & (~(1LL << i)))
 // #define toggleBit(x, i) ((x) ^ (1LL << (i)))
 // #define clz(x) __builtin_clzll(x)
-// #define ctz(x) __builtin_ctzll(x)
+#define ctz(x) __builtin_ctzll(x)
 #define csb(x) __builtin_popcountll(x)
 // #define msb(x) (ll)((x) ? (63 - __builtin_clzll((ll)(x))) : -1)
 // #define lsb(x) (ll)((x) ? (__builtin_ctzll((ll)(x))) : -1)
@@ -52,15 +52,15 @@ typedef vector<vector<int>> vvi;
 =======================*/
 
 const ll MOD = 1000000007;
-const ld PI = acos(-1.0L);
-const ld EPS = 1e-12;
+// const ld PI = acos(-1.0L);
+// const ld EPS = 1e-12;
 
-const int MAXN = 2e5 + 5;
-const int MAXSIEVE = 1e6 + 5;
+// const int MAXN = 2e5 + 5;
+// const int MAXSIEVE = 1e6 + 5;
 
-/*======================
-        FAST HASH
-// =======================*/
+// /*======================
+//         FAST HASH
+// // =======================*/
 
 struct custom_hash {
     static uint64_t splitmix64(uint64_t x) {
@@ -109,43 +109,43 @@ using umap = unordered_map<K,V,custom_hash>;
     MODULAR ARITHMETIC
 =======================*/
 
-ll binexp(ll a,ll b){
-    // if(a==0 || b==0) return 1;
-    ll res = 1;
-    a %= MOD;
-    while(b){
-        if(b&1) res = (res*a)%MOD;
-        a = (a*a)%MOD;
-        b >>= 1;
-    }
-    return res;
-}
+// ll binexp(ll a,ll b){
+//     // if(a==0 || b==0) return 1;
+//     ll res = 1;
+//     a %= MOD;
+//     while(b){
+//         if(b&1) res = (res*a)%MOD;
+//         a = (a*a)%MOD;
+//         b >>= 1;
+//     }
+//     return res;
+// }
 
-ll modinv(ll a){
-    return binexp(a,MOD-2);
-}
+// ll modinv(ll a){
+//     return binexp(a,MOD-2);
+// }
 
 /*======================
     COMBINATORICS
 =======================*/
 
-ll fact[MAXN];
-ll invfact[MAXN];
-// vector<ll> primes;
+// ll fact[MAXN];
+// ll invfact[MAXN];
+// // vector<ll> primes;
 
-void build_factorial(){
-    fact[0] = 1;
-    for(int i=1;i<MAXN;i++)
-        fact[i] = (fact[i-1]*i)%MOD;
-    invfact[MAXN-1] = modinv(fact[MAXN-1]);
-    for(int i=MAXN-2;i>=0;i--)
-        invfact[i] = (invfact[i+1]*(i+1))%MOD;
-}
+// void build_factorial(){
+//     fact[0] = 1;
+//     for(int i=1;i<MAXN;i++)
+//         fact[i] = (fact[i-1]*i)%MOD;
+//     invfact[MAXN-1] = modinv(fact[MAXN-1]);
+//     for(int i=MAXN-2;i>=0;i--)
+//         invfact[i] = (invfact[i+1]*(i+1))%MOD;
+// }
 
-ll ncr(ll n,ll r){
-    if(r<0 || r>n) return 0;
-    return fact[n]*invfact[r]%MOD*invfact[n-r]%MOD;
-}
+// ll ncr(ll n,ll r){
+//     if(r<0 || r>n) return 0;
+//     return fact[n]*invfact[r]%MOD*invfact[n-r]%MOD;
+// }
 
 // /*======================
 //     NUMBER THEORY
@@ -203,23 +203,23 @@ void build_spf() {
     }
 }
 
-vector<pair<int,int>> factorize(int x) {
-    vector<pair<int,int>> res;
+vll getFactors(ll p)
+{
+    vll factors;
 
-    while (x > 1) {
-        int p = spf[x];
-        int cnt = 0;
+    while(p>1)
+    {
+        ll x=spf[p];
+        factors.pb(x);
 
-        while (x % p == 0) {
-            x /= p;
-            cnt++;
-        }
-
-        res.push_back({p, cnt});
+        while(p%x==0)
+            p/=x;
     }
 
-    return res;
+    return factors;
 }
+
+
 
 // /*======================
 //         INPUT
@@ -344,6 +344,28 @@ void get_vector1based(vector<ll>& v){
 //     }
 // };
 
+ll func(vll& primes,ll x,ll mid){
+
+ll n=primes.size();
+ll ans1=0,ans2=0;
+for(ll i=1;i<(1LL<<(n));i++){
+      ll sign=csb(i);
+      sign=(sign%2==1 ? 1 : -1);
+      
+      ll mul=1;
+      for(ll j=0;j<n;j++){
+          if((i&(1LL<<j))>0){
+              mul*=primes[j];
+          }
+      }
+     ans1+=(sign*(x/mul));
+     ans2+=(sign*(mid/mul));
+}
+
+ll cnt=(mid-ans2)-(x-ans1);
+
+return cnt;
+}
 
 
 int main()
@@ -351,61 +373,34 @@ int main()
     ios_base::sync_with_stdio(false);
     cin.tie(NULL);
 
-   ll t;
-   cin >> t;
+   ll la,ra,ta,lb,rb,tb;
+   cin >> la >> ra >> ta;
+   cin >> lb >> rb >> tb;
 
-   
-    while(t--){
+   ll lena=ra-la+1;
+   ll lenb=rb-lb+1;
 
-        ll n,k;
-        cin >> n >> k;
-        
-        vll ara(n+1);
-        get_vector1based(ara);
+  
+  ll ans=0;
+  ll t=gcd(ta,tb);
+  ll d=((lb-la)%t+t)%t;
 
-        vll pref(n+1,0);
 
-        for(ll i=1;i<=n;i++){
-             pref[i]=pref[i-1]+ara[i];
-        }
+  auto calc = [&](ll x) { 
+    ll l=max(0LL,x);
+    ll r=min(lena,lenb+x);
 
-        for(ll i=1;i<=n;i++){
-          
-          if(i==1){
-              cout << 0 << ' ';
-              continue;
-          }
+    ans=max(ans,r-l);
+  };
 
-          ll l=i+1,rr=n;
 
-          ll r=i;
 
-          while(l<=rr){
-                ll mid=(l+rr)/2;
-                if((ara[mid]-ara[i-1])>k*(mid-i)){
-                      r=mid;
-                      l=mid+1;
-                }
-                else{
-                      rr=mid-1;
-                }
-          }
+  calc(d);
+  calc(d-t);
 
-          ll sum=pref[r]-pref[i];
-          ll cnt=r-i;
-          ll p=cnt*ara[i-1];
-          
-          ll x=k*(cnt*(cnt+1))/2;
+  cout << ans << endl;
 
-          ll ans=(sum-p-x);
-        //   cout << 'd';
-          cout << ans << ' ';
-        }
 
-   cout << endl;
-
-}
-    
 
     return 0;
 }
