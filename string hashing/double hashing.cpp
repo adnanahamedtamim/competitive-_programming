@@ -1,4 +1,4 @@
-```cpp
+
 #include <bits/stdc++.h>
 using namespace std;
 
@@ -7,10 +7,13 @@ typedef long long ll;
 #define pb push_back
 #define all(x) x.begin(), x.end()
 
-const ll p1 = 7919;
+
 const ll mod1 = 1000004249;
-const ll p2 = 2203;
 const ll mod2 = 1000000289;
+
+mt19937_64 rng(chrono::steady_clock::now().time_since_epoch().count());
+const ll P1 = uniform_int_distribution<ll>(256, M1 - 2)(rng);
+const ll P2 = uniform_int_distribution<ll>(256, M2 - 2)(rng);
 
 vector<ll> pwr1, pwr2;
 
@@ -77,4 +80,3 @@ int main() {
 
     return 0;
 }
-```
