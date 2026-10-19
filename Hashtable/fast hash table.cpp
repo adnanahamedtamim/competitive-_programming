@@ -7,7 +7,7 @@ typedef unsigned long long ull;
 
 // Ultra-fast flat open-addressing hash table with version reset
 struct FastHashTable {
-    static const int SZ = 1 << 20; // 1,048,576 slots (must be power of 2)
+    static const int SZ = 1 << 20; // 1,048,576 slots (must be power of 2) and must be at least 2*n . (n is the number of estimated keys)
     static const int MASK = SZ - 1;
 
     ull keys[SZ];
