@@ -67,14 +67,15 @@ struct FastHashTable {
         }
         return -1; // Not found
     }
-} ht;
+};
 
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
 
     vector<ull> arr = {10592, 429104, 10592, 998244, 429104};
-    
+
+    FastHashTable ht;
     ht.clear();
     for (int i = 0; i < arr.size(); i++) {
         int prev_idx = ht.find(arr[i]);
