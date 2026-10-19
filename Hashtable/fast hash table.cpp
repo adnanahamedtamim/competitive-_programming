@@ -40,6 +40,25 @@ struct FastHashTable {
         }
     }
 
+    // Increases the value associated with 'key' by 'delta'
+    // Returns the new updated value!
+    int increase(ull key, int delta = 1) {
+        int b = get_bucket(key);
+        while (ver[b] == cur_ver && keys[b] != key) {
+            b = (b + 1) & MASK;
+        }
+        if (ver[b] != cur_ver) {
+            // Key doesn't exist yet -> initialize it to 'delta'
+            ver[b] = cur_ver;
+            keys[b] = key;
+            vals[b] = delta;
+            return vals[b];
+        } else {
+            // Key already exists -> add delta to its current value!
+            vals[b] += delta;
+            return vals[b];
+        }
+    }
     int find(ull key) const {
         int b = get_bucket(key);
         while (ver[b] == cur_ver) {
