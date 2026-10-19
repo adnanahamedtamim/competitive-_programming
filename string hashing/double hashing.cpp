@@ -15,6 +15,7 @@ struct DoubleHash {
 
     int n;
     vector<ll> h1, h2;
+    vector<ll> rh1, rh2; // Added for O(1) palindrome check
 
     static void ensure_pwrs(int sz) {
         if (pwr1.empty()) {
@@ -37,11 +38,20 @@ struct DoubleHash {
         ensure_pwrs(n);
         h1.assign(n + 1, 0);
         h2.assign(n + 1, 0);
+        rh1.assign(n + 1, 0);
+        rh2.assign(n + 1, 0);
 
         for (int i = 0; i < n; i++) {
             ll val = (unsigned char)s[i] + 1LL;
             h1[i + 1] = (h1[i] * p1 + val) % mod1;
             h2[i + 1] = (h2[i] * p2 + val) % mod2;
+        }
+
+        // Build reverse hash prefix arrays
+        for (int i = 0; i < n; i++) {
+            ll val = (unsigned char)s[n - 1 - i] + 1LL;
+            rh1[i + 1] = (rh1[i] * p1 + val) % mod1;
+            rh2[i + 1] = (rh2[i] * p2 + val) % mod2;
         }
     }
 
@@ -51,6 +61,22 @@ struct DoubleHash {
         ll x = (h1[r + 1] - h1[l] * pwr1[len] % mod1 + mod1) % mod1;
         ll y = (h2[r + 1] - h2[l] * pwr2[len] % mod2 + mod2) % mod2;
         return {x, y};
+    }
+
+    pair<ll, ll> getRevHash(int l, int r) const {
+        if (l > r) return {0, 0};
+        int len = r - l + 1;
+        int rl = n - 1 - r;
+        int rr = n - 1 - l;
+        ll x = (rh1[rr + 1] - rh1[rl] * pwr1[len] % mod1 + mod1) % mod1;
+        ll y = (rh2[rr + 1] - rh2[rl] * pwr2[len] % mod2 + mod2) % mod2;
+        return {x, y};
+    }
+
+    // O(1) palindrome check for substring s[l ... r]
+    bool isPalindrome(int l, int r) const {
+        if (l >= r) return true;
+        return getHash(l, r) == getRevHash(l, r);
     }
 
     pair<ll, ll> fullHash() const {
