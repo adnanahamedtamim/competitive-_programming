@@ -6,10 +6,10 @@ typedef unsigned long long ull;
 // Map to store a unique random 64-bit key for each number value
 unordered_map<int, ull> val_key;
 
-// Function to generate or retrieve a random 64-bit key for a number
 ull get_key(int val) {
     if (val_key.find(val) == val_key.end()) {
-        static mt19937_64 rng(1337); // Seeded random number generator
+        // Seed using steady_clock so it's different every run
+        static mt19937_64 rng(chrono::steady_clock::now().time_since_epoch().count());
         val_key[val] = rng();
     }
     return val_key[val];
