@@ -6,149 +6,232 @@ using ll = long long;
 
 struct Eertree {
     struct Node {
-        int len, link;
-        int next[26] = {};
+        int len = 0, link = 0, head = -1;
+        int num = 0, firstEnd = -1;
+        int diff = 0, seriesLink = 0;
+        int seriesBest = 0;
+        int occ = 0;
 
-        int num = 0;
-        int firstEnd = -1;
-        ll occ = 0;
+        Node(int l = 0) : len(l) {}
+    };
 
-        Node(int l = 0) : len(l), link(0) {}
+    // 8 bytes per edge
+    struct Edge {
+        uint32_t packed; // high 8 bits: char, low 24: node
+        int next;
     };
 
     struct History {
         int prevLast;
-        int parent;
-        int c;
-        bool created;
+        int parent;       // -1 if no node was created
+        int changeStart;
     };
 
-    vector<Node> tree;
+    vector<Node> t;
+    vector<Edge> edges;
     vector<History> history;
+
+    // Saved seriesBest changes for rollback
+    vector<pair<int, int>> changes;
+
+    vector<int> bestHistory = {-1};
+    vector<int> dp = {0};
 
     string s;
     int last = 1;
     ll total = 0;
 
-    // Best palindrome node for each prefix
-    vector<int> bestHistory = {-1};
+    static constexpr int INF = 1e9;
+    static constexpr int NODE_LIMIT = (1 << 24);
 
-    // Minimum palindrome partition DP for each prefix
-    vector<int> dp = {0};
+    // O(1), excluding optional allocation
+    explicit Eertree(int capacity = 0) {
+        if (capacity > 0) {
+            if (capacity >= NODE_LIMIT - 2)
+                throw length_error("Node limit exceeded");
 
-    // O(1)
-    Eertree() {
-        tree.emplace_back(-1); // Node 0: odd root
-        tree.emplace_back(0);  // Node 1: even root
+            t.reserve(capacity + 2);
+            edges.reserve(capacity);
+            history.reserve(capacity);
+            s.reserve(capacity);
+            bestHistory.reserve(capacity + 1);
+            dp.reserve(capacity + 1);
+        }
 
-        tree[0].link = 0;
-        tree[1].link = 0;
+        t.emplace_back(-1);
+        t.emplace_back(0);
+
+        t[0].link = 0;
+        t[1].link = 0;
     }
 
-    // Amortized O(1) in standard append-only construction.
-    // O(n) worst case for one call.
-    int getLink(int v, int pos) {
+    // O(26) = O(1)
+    int getNext(int v, int c) const {
+        for (int e = t[v].head;
+             e != -1;
+             e = edges[e].next) {
+
+            uint32_t x = edges[e].packed;
+
+            if ((int)(x >> 24) == c)
+                return (int)(x & 0xFFFFFFu);
+        }
+        return 0;
+    }
+
+    // O(1)
+    void addEdge(int v, int c, int to) {
+        uint32_t packed =
+            (uint32_t(c) << 24) | uint32_t(to);
+
+        edges.push_back({packed, t[v].head});
+        t[v].head = (int)edges.size() - 1;
+    }
+
+    // O(n) worst case per call
+    int getLink(int v, int pos) const {
         while (true) {
-            int left = pos - tree[v].len - 1;
+            int left = pos - t[v].len - 1;
 
             if (left >= 0 && s[left] == s[pos])
                 return v;
 
-            v = tree[v].link;
+            v = t[v].link;
         }
     }
 
-    // O(n) worst case per add() with rollback.
-    // Includes O(n) worst-case partition DP.
-    void add(char ch) {
-        int prevLast = last;
+    // O(n) worst case for suffix-link search.
+    // Series-link partition DP: O(log n) iterations.
+    // Returns 1 if a new palindrome is created.
+    int add(char ch) {
+        if (ch < 'a' || ch > 'z')
+            throw invalid_argument("Only lowercase a-z");
 
-        s += ch;
-        int pos = (int)s.size() - 1;
+        if ((int)t.size() >= NODE_LIMIT - 1)
+            throw length_error("Node limit exceeded");
+
+        int prevLast = last;
+        int pos = (int)s.size();
         int c = ch - 'a';
 
+        s.push_back(ch);
+
         int cur = getLink(last, pos);
-        bool created = false;
+        int to = getNext(cur, c);
 
-        if (tree[cur].next[c] == 0) {
-            created = true;
+        int parent = -1;
+        int created = 0;
 
-            int id = (int)tree.size();
-            tree.emplace_back(tree[cur].len + 2);
+        if (to == 0) {
+            created = 1;
+            parent = cur;
 
-            tree[cur].next[c] = id;
-            tree[id].firstEnd = pos;
+            int id = (int)t.size();
+            t.emplace_back(t[cur].len + 2);
+            addEdge(cur, c, id);
 
-            if (tree[id].len == 1) {
-                tree[id].link = 1;
-            } else {
-                int p = getLink(tree[cur].link, pos);
-                tree[id].link = tree[p].next[c];
+            int suffix = 1;
+
+            if (t[id].len > 1) {
+                int p = getLink(t[cur].link, pos);
+                suffix = getNext(p, c);
             }
 
-            tree[id].num =
-                1 + tree[tree[id].link].num;
+            t[id].link = suffix;
+            t[id].firstEnd = pos;
+            t[id].num = 1 + t[suffix].num;
+
+            t[id].diff = t[id].len - t[suffix].len;
+
+            if (t[id].diff == t[suffix].diff)
+                t[id].seriesLink = t[suffix].seriesLink;
+            else
+                t[id].seriesLink = suffix;
+
+            to = id;
         }
 
-        last = tree[cur].next[c];
+        last = to;
+        t[last].occ++;
+        total += t[last].num;
 
-        history.push_back({
-            prevLast, cur, c, created
-        });
-
-        // Total palindrome occurrences
-        total += tree[last].num;
-
-        // Raw frequency count
-        tree[last].occ++;
-
-        // Longest palindrome in current prefix
         int best = bestHistory.back();
 
-        if (best == -1 ||
-            tree[last].len > tree[best].len) {
+        if (best == -1 || t[last].len > t[best].len)
             best = last;
-        }
 
         bestHistory.push_back(best);
 
-        // Minimum palindrome partition DP
-        int answer = INT_MAX;
+        history.push_back({
+            prevLast,
+            parent,
+            (int)changes.size()
+        });
+
+        // Optimized palindrome partition DP
+        int answer = INF;
+        int i = (int)s.size();
 
         for (int v = last;
-             tree[v].len > 0;
-             v = tree[v].link) {
+             t[v].len > 0;
+             v = t[v].seriesLink) {
 
-            int len = tree[v].len;
+            int sl = t[v].seriesLink;
 
-            answer = min(
-                answer,
-                dp[pos + 1 - len] + 1
-            );
+            int index =
+                i - (t[sl].len + t[v].diff);
+
+            int value = dp[index];
+
+            if (t[v].diff == t[t[v].link].diff) {
+                value = min(
+                    value,
+                    t[t[v].link].seriesBest
+                );
+            }
+
+            // Save old value for rollback
+            changes.push_back({v, t[v].seriesBest});
+            t[v].seriesBest = value;
+
+            answer = min(answer, value + 1);
         }
 
         dp.push_back(answer);
+        return created;
     }
 
-    // O(1)
+    // O(log n) for restoring series-link DP changes
+    // Other rollback work is O(1).
     void pop_back() {
         if (s.empty())
             return;
 
-        // Undo statistics for the final position
-        total -= tree[last].num;
-        tree[last].occ--;
+        total -= t[last].num;
+        t[last].occ--;
 
         History h = history.back();
         history.pop_back();
 
-        bestHistory.pop_back();
         dp.pop_back();
+        bestHistory.pop_back();
 
-        // Undo newly created node and transition
-        if (h.created) {
-            tree[h.parent].next[h.c] = 0;
-            tree.pop_back();
+        // Undo series-link DP changes
+        while ((int)changes.size() > h.changeStart) {
+            auto [v, oldValue] = changes.back();
+            changes.pop_back();
+
+            t[v].seriesBest = oldValue;
+        }
+
+        // Remove newly created node and edge
+        if (h.parent != -1) {
+            int e = t[h.parent].head;
+
+            t[h.parent].head = edges[e].next;
+
+            edges.pop_back();
+            t.pop_back();
         }
 
         last = h.prevLast;
@@ -162,7 +245,7 @@ struct Eertree {
 
     // O(1)
     int distinct() const {
-        return (int)tree.size() - 2;
+        return (int)t.size() - 2;
     }
 
     // O(1)
@@ -173,37 +256,44 @@ struct Eertree {
     // O(1)
     int longestPalindromeLength() const {
         int v = bestHistory.back();
-        return v == -1 ? 0 : tree[v].len;
+        return v == -1 ? 0 : t[v].len;
     }
 
-    // O(L), where L = returned string length
-    string longestPalindrome() const {
-        int v = bestHistory.back();
-
-        if (v == -1)
+    // O(L)
+    string getPalindrome(int v) const {
+        if (v < 2 || v >= (int)t.size())
             return "";
 
-        return getPalindrome(v);
+        int len = t[v].len;
+        int end = t[v].firstEnd;
+
+        return s.substr(end - len + 1, len);
+    }
+
+    // O(L)
+    string longestPalindrome() const {
+        return getPalindrome(bestHistory.back());
     }
 
     // O(1)
     int longestSuffixLength() const {
-        return tree[last].len;
+        return t[last].len;
     }
 
-    // O(L), where L = returned string length
+    // O(L)
     string longestSuffix() const {
         if (s.empty())
             return "";
 
         return s.substr(
-            s.size() - tree[last].len
+            s.size() - t[last].len,
+            t[last].len
         );
     }
 
     // O(1)
     int palindromesEndingHere() const {
-        return tree[last].num;
+        return t[last].num;
     }
 
     // O(1)
@@ -211,42 +301,31 @@ struct Eertree {
         return dp.back();
     }
 
-    // O(L), where L = palindrome length
-    string getPalindrome(int v) const {
-        if (v < 2 || v >= (int)tree.size())
-            return "";
-
-        int len = tree[v].len;
-        int end = tree[v].firstEnd;
-
-        return s.substr(end - len + 1, len);
-    }
-
-    // O(n), where n = current string length
+    // O(n) time, O(n) temporary space
     vector<ll> frequencies() const {
-        int m = (int)tree.size();
+        int m = (int)t.size();
         vector<ll> cnt(m, 0);
 
         for (int v = 2; v < m; v++)
-            cnt[v] = tree[v].occ;
+            cnt[v] = t[v].occ;
 
-        // Nodes are created in increasing length order.
-        // Propagate occurrences to shorter suffixes.
+        // Reverse creation order:
+        // suffix links always point to older nodes.
         for (int v = m - 1; v >= 2; v--)
-            cnt[tree[v].link] += cnt[v];
+            cnt[t[v].link] += cnt[v];
 
         return cnt;
     }
 
-    // O(n + L), L = returned palindrome length
+    // O(n + L)
     string mostFrequent() const {
-        if (tree.size() == 2)
+        if (t.size() == 2)
             return "";
 
         auto cnt = frequencies();
         int best = 2;
 
-        for (int v = 3; v < (int)tree.size(); v++) {
+        for (int v = 3; v < (int)t.size(); v++) {
             if (cnt[v] > cnt[best])
                 best = v;
         }
@@ -254,16 +333,15 @@ struct Eertree {
         return getPalindrome(best);
     }
 
-    // O(n + L), L = returned palindrome length
+    // O(n + L)
     string longestRepeated(ll k) const {
         auto cnt = frequencies();
-
         int best = -1;
 
-        for (int v = 2; v < (int)tree.size(); v++) {
+        for (int v = 2; v < (int)t.size(); v++) {
             if (cnt[v] >= k &&
                 (best == -1 ||
-                 tree[v].len > tree[best].len)) {
+                 t[v].len > t[best].len)) {
                 best = v;
             }
         }
@@ -271,13 +349,14 @@ struct Eertree {
         return getPalindrome(best);
     }
 
-    // O(n + output size)
+    // O(n + total length of returned strings)
     vector<pair<string, ll>> allPalindromes() const {
         auto cnt = frequencies();
 
         vector<pair<string, ll>> result;
+        result.reserve(distinct());
 
-        for (int v = 2; v < (int)tree.size(); v++) {
+        for (int v = 2; v < (int)t.size(); v++) {
             result.push_back({
                 getPalindrome(v), cnt[v]
             });
@@ -286,11 +365,11 @@ struct Eertree {
         return result;
     }
 
-    // O(n + output size)
+    // O(n + total printed characters)
     void printFrequencies() const {
         auto cnt = frequencies();
 
-        for (int v = 2; v < (int)tree.size(); v++) {
+        for (int v = 2; v < (int)t.size(); v++) {
             cout << getPalindrome(v)
                  << " : " << cnt[v] << '\n';
         }
@@ -303,52 +382,35 @@ int main() {
 
     Eertree et;
 
-    // Build "ababa"
     for (char c : string("ababa"))
         et.add(c);
 
     cout << "String: " << et.s << '\n';
-
-    cout << "Distinct: "
-         << et.distinct() << '\n';
-
-    cout << "Total palindromes: "
-         << et.totalPalindromes() << '\n';
-
-    cout << "Longest palindrome: "
-         << et.longestPalindrome() << '\n';
-
-    cout << "Longest suffix: "
-         << et.longestSuffix() << '\n';
-
-    cout << "Palindromes ending here: "
+    cout << "Distinct: " << et.distinct() << '\n';
+    cout << "Total: " << et.totalPalindromes() << '\n';
+    cout << "Longest: " << et.longestPalindrome() << '\n';
+    cout << "Longest suffix: " << et.longestSuffix() << '\n';
+    cout << "Ending here: "
          << et.palindromesEndingHere() << '\n';
-
-    cout << "Minimum partitions: "
+    cout << "Min partitions: "
          << et.minimumPartition() << '\n';
-
     cout << "Most frequent: "
          << et.mostFrequent() << '\n';
-
-    cout << "Longest repeated >= 2: "
+    cout << "Repeated >= 2: "
          << et.longestRepeated(2) << '\n';
 
     cout << "\nFrequencies:\n";
     et.printFrequencies();
 
-    // Remove final 'a'
     et.pop_back();
 
     cout << "\nAfter pop: " << et.s << '\n';
-    cout << "Total: "
-         << et.totalPalindromes() << '\n';
+    cout << "Min partitions: "
+         << et.minimumPartition() << '\n';
 
-    // Append 'c'
     et.add('c');
 
     cout << "\nAfter adding c: " << et.s << '\n';
     cout << "Longest: "
          << et.longestPalindrome() << '\n';
-
-    return 0;
 }
