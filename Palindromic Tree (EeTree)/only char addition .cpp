@@ -5,36 +5,101 @@ using namespace std;
 using ll = long long;
 
 struct Eertree {
+    // 12 bytes per node
     struct Node {
-        int len, link;
-        int next[26] = {};
+        int len, link, head;
 
-        int num = 0;         // Number of palindromic suffixes
-        int firstEnd = -1;   // First ending position
-        ll occ = 0;          // Raw occurrence count
-
-        Node(int l = 0) : len(l), link(0) {}
+        Node(int l = 0)
+            : len(l), link(0), head(-1) {}
     };
 
+    // 8 bytes per edge
+    // High 8 bits: character (0..25)
+    // Low 24 bits: destination node ID
+    struct Edge {
+        uint32_t packed;
+        int next;
+    };
+
+    const string& s;
+
     vector<Node> tree;
-    string s;
+    vector<Edge> edges;
+
+    // Metadata for each palindrome node
+    vector<int> firstEnd;
+    vector<int> num;
+    vector<int> seriesLink;
+    vector<int> diff;
+    vector<ll> occ;
+
+    // Longest palindromic suffix node for every prefix
+    vector<int> prefixLast;
 
     int last = 1;
     int best = -1;
     ll total = 0;
 
-    // O(1)
-    Eertree() {
-        tree.emplace_back(-1); // Root -1
-        tree.emplace_back(0);  // Root 0
+    // Cached propagated frequencies
+    mutable vector<ll> freqCache;
+    mutable bool freqValid = false;
 
-        tree[0].link = 0;
-        tree[1].link = 0;
+    // O(1), plus reserve allocation
+    explicit Eertree(const string& str) : s(str) {
+        int n = (int)s.size();
+
+        if ((size_t)n + 2 >= (1u << 24))
+            throw length_error("Too many Eertree nodes");
+
+        tree.reserve(n + 2);
+        edges.reserve(n);
+
+        firstEnd.reserve(n + 2);
+        num.reserve(n + 2);
+        occ.reserve(n + 2);
+        diff.reserve(n + 2);
+        seriesLink.reserve(n + 2);
+        prefixLast.reserve(n);
+
+        tree.emplace_back(-1);
+        tree.emplace_back(0);
+
+        for (int i = 0; i < 2; i++) {
+            firstEnd.push_back(-1);
+            num.push_back(0);
+            occ.push_back(0);
+            diff.push_back(0);
+            seriesLink.push_back(0);
+        }
     }
 
-    // O(n) worst case per call;
-    // amortized O(1) during append-only construction
-    int getLink(int v, int pos) {
+    // O(26) = O(1)
+    int getNext(int v, int c) const {
+        for (int e = tree[v].head;
+             e != -1;
+             e = edges[e].next) {
+
+            uint32_t x = edges[e].packed;
+
+            if ((int)(x >> 24) == c)
+                return (int)(x & 0xFFFFFFu);
+        }
+
+        return 0;
+    }
+
+    // O(1)
+    void addEdge(int v, int c, int to) {
+        uint32_t x =
+            (uint32_t(c) << 24) | uint32_t(to);
+
+        edges.push_back({x, tree[v].head});
+        tree[v].head = (int)edges.size() - 1;
+    }
+
+    // O(n) worst case for one call
+    // Amortized O(1) over append-only construction
+    int getLink(int v, int pos) const {
         while (true) {
             int left = pos - tree[v].len - 1;
 
@@ -45,56 +110,67 @@ struct Eertree {
         }
     }
 
-    // O(1) amortized; O(n) worst case
-    void add(char ch) {
-        s += ch;
-
-        int pos = (int)s.size() - 1;
-        int c = ch - 'a';
+    // O(1) amortized over the full build
+    // Returns 1 if a new palindrome was created
+    int add(int pos) {
+        int c = s[pos] - 'a';
 
         int cur = getLink(last, pos);
+        int to = getNext(cur, c);
 
-        if (tree[cur].next[c] == 0) {
-            int id = (int)tree.size();
-
-            tree.emplace_back(tree[cur].len + 2);
-            tree[cur].next[c] = id;
-
-            tree[id].firstEnd = pos;
-
-            if (tree[id].len == 1) {
-                tree[id].link = 1;
-            } else {
-                int p = getLink(tree[cur].link, pos);
-                tree[id].link = tree[p].next[c];
-            }
-
-            tree[id].num =
-                1 + tree[tree[id].link].num;
+        if (to != 0) {
+            last = to;
+            occ[last]++;
+            total += num[last];
+            prefixLast.push_back(last);
+            freqValid = false;
+            return 0;
         }
 
-        last = tree[cur].next[c];
+        int id = (int)tree.size();
+        tree.emplace_back(tree[cur].len + 2);
+        addEdge(cur, c, id);
 
-        // Count palindrome occurrences
-        tree[last].occ++;
-        total += tree[last].num;
+        int suffix = 1;
 
-        // Track longest palindrome
+        if (tree[id].len > 1) {
+            int p = getLink(tree[cur].link, pos);
+            suffix = getNext(p, c);
+        }
+
+        tree[id].link = suffix;
+
+        firstEnd.push_back(pos);
+        num.push_back(1 + num[suffix]);
+        occ.push_back(0);
+
+        int d = tree[id].len - tree[suffix].len;
+        diff.push_back(d);
+
+        if (d == diff[suffix])
+            seriesLink.push_back(seriesLink[suffix]);
+        else
+            seriesLink.push_back(suffix);
+
+        last = id;
+        occ[last]++;
+        total += num[last];
+
         if (best == -1 ||
-            tree[last].len > tree[best].len) {
-            best = last;
+            tree[id].len > tree[best].len) {
+            best = id;
         }
+
+        prefixLast.push_back(last);
+        freqValid = false;
+
+        return 1;
     }
 
-    // O(n) total to build a string of length n
-    void build(const string& str) {
-        for (char c : str)
-            add(c);
-    }
-
-    // O(1)
-    int size() const {
-        return (int)s.size();
+    // O(n) total
+    void build() {
+        for (int i = 0; i < (int)s.size(); i++)
+            add(i);
     }
 
     // O(1)
@@ -112,7 +188,18 @@ struct Eertree {
         return best == -1 ? 0 : tree[best].len;
     }
 
-    // O(L), L = returned palindrome length
+    // O(L)
+    string getPalindrome(int v) const {
+        if (v < 2 || v >= (int)tree.size())
+            return "";
+
+        int len = tree[v].len;
+        int end = firstEnd[v];
+
+        return s.substr(end - len + 1, len);
+    }
+
+    // O(L)
     string longestPalindrome() const {
         return getPalindrome(best);
     }
@@ -124,51 +211,47 @@ struct Eertree {
 
     // O(L)
     string longestSuffix() const {
-        if (s.empty())
+        if (prefixLast.empty())
             return "";
 
         return s.substr(
-            s.size() - tree[last].len
+            prefixLast.size() - tree[last].len,
+            tree[last].len
         );
     }
 
     // O(1)
     int palindromesEndingHere() const {
-        return tree[last].num;
+        return num[last];
     }
 
-    // O(L)
-    string getPalindrome(int v) const {
-        if (v < 2 || v >= (int)tree.size())
-            return "";
+    // O(n) first call after add(), O(1) cached
+    const vector<ll>& frequencies() const {
+        if (freqValid)
+            return freqCache;
 
-        int len = tree[v].len;
-        int end = tree[v].firstEnd;
-
-        return s.substr(end - len + 1, len);
-    }
-
-    // O(n)
-    // Returns frequency of every palindrome node
-    vector<ll> frequencies() const {
         int m = (int)tree.size();
-        vector<ll> cnt(m, 0);
+
+        freqCache.assign(m, 0);
 
         for (int v = 2; v < m; v++)
-            cnt[v] = tree[v].occ;
+            freqCache[v] = occ[v];
 
         for (int v = m - 1; v >= 2; v--)
-            cnt[tree[v].link] += cnt[v];
+            freqCache[tree[v].link] += freqCache[v];
 
-        return cnt;
+        freqValid = true;
+        return freqCache;
     }
 
     // O(n + L)
+    // Frequencies are cached
     string mostFrequent() const {
         if (best == -1)
             return "";
 
-        auto cnt = frequencies();
+        const auto& cnt = frequencies();
+
         int ans = 2;
 
         for (int v = 3; v < (int)tree.size(); v++) {
@@ -181,7 +264,8 @@ struct Eertree {
 
     // O(n + L)
     string longestRepeated(ll k) const {
-        auto cnt = frequencies();
+        const auto& cnt = frequencies();
+
         int ans = -1;
 
         for (int v = 2; v < (int)tree.size(); v++) {
@@ -195,16 +279,16 @@ struct Eertree {
         return getPalindrome(ans);
     }
 
-    // O(n + total length of returned strings)
+    // O(n + total returned string lengths)
     vector<pair<string, ll>> allPalindromes() const {
-        auto cnt = frequencies();
+        const auto& cnt = frequencies();
 
         vector<pair<string, ll>> result;
+        result.reserve(distinct());
 
         for (int v = 2; v < (int)tree.size(); v++) {
             result.push_back({
-                getPalindrome(v),
-                cnt[v]
+                getPalindrome(v), cnt[v]
             });
         }
 
@@ -213,7 +297,7 @@ struct Eertree {
 
     // O(n + total printed characters)
     void printFrequencies() const {
-        auto cnt = frequencies();
+        const auto& cnt = frequencies();
 
         for (int v = 2; v < (int)tree.size(); v++) {
             cout << getPalindrome(v)
@@ -221,33 +305,27 @@ struct Eertree {
         }
     }
 
-    // O(n^2) worst case
-    // Minimum number of palindromic substrings
-    // needed to partition the current string
+    // O(n^2) worst case, O(n) extra space
+    // Does NOT rebuild another Eertree
     int minimumPartition() const {
-        int n = (int)s.size();
+        int n = (int)prefixLast.size();
         const int INF = 1e9;
 
         vector<int> dp(n + 1, INF);
         dp[0] = 0;
 
-        // Longest palindrome suffix node for each prefix
-        // Reconstruct it using a temporary Eertree
-        Eertree temp;
-
         for (int i = 1; i <= n; i++) {
-            temp.add(s[i - 1]);
+            int v = prefixLast[i - 1];
 
-            for (int v = temp.last;
-                 temp.tree[v].len > 0;
-                 v = temp.tree[v].link) {
-
-                int len = temp.tree[v].len;
+            while (tree[v].len > 0) {
+                int len = tree[v].len;
 
                 dp[i] = min(
                     dp[i],
                     dp[i - len] + 1
                 );
+
+                v = tree[v].link;
             }
         }
 
@@ -262,38 +340,36 @@ int main() {
     string s;
     cin >> s;
 
-    Eertree et;
-    et.build(s);
+    Eertree et(s);
+    et.build();
 
-    cout << "Distinct palindromes: "
+    cout << "Distinct: "
          << et.distinct() << '\n';
 
-    cout << "Total palindrome occurrences: "
+    cout << "Total occurrences: "
          << et.totalPalindromes() << '\n';
 
     cout << "Longest palindrome: "
          << et.longestPalindrome() << '\n';
 
-    cout << "Longest palindrome length: "
+    cout << "Longest length: "
          << et.longestPalindromeLength() << '\n';
 
-    cout << "Longest palindromic suffix: "
+    cout << "Longest suffix: "
          << et.longestSuffix() << '\n';
 
-    cout << "Palindromes ending at last position: "
+    cout << "Palindromes ending here: "
          << et.palindromesEndingHere() << '\n';
 
-    cout << "Most frequent palindrome: "
+    cout << "Most frequent: "
          << et.mostFrequent() << '\n';
 
-    cout << "Longest palindrome occurring >= 2 times: "
+    cout << "Longest repeated >= 2: "
          << et.longestRepeated(2) << '\n';
 
-    cout << "Minimum palindrome partitions: "
+    cout << "Minimum partitions: "
          << et.minimumPartition() << '\n';
 
-    cout << "\nAll palindrome frequencies:\n";
+    cout << "\nFrequencies:\n";
     et.printFrequencies();
-
-    return 0;
 }
