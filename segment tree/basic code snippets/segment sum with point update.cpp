@@ -1,11 +1,28 @@
+
+struct Node {
+    ll sum = 0;
+    
+    Node() {}
+
+    Node(ll val) {
+        sum = val;
+    }
+};
+
 class SegmentTree {
 private:
     ll n;
-    vector<ll> seg;
+    vector<Node> seg;
+
+    Node merge(Node a, Node b) {
+        Node res;
+        res.sum = a.sum + b.sum;
+        return res;
+    }
 
     void build(ll node, ll l, ll r, vector<ll>& ara) {
         if (l == r) {
-            seg[node] = ara[l];
+            seg[node] = Node(ara[l]);
             return;
         }
 
@@ -14,25 +31,27 @@ private:
         build(2 * node + 1, l, mid, ara);
         build(2 * node + 2, mid + 1, r, ara);
 
-        seg[node] = seg[2 * node + 1] + seg[2 * node + 2];
+        seg[node] = merge(seg[2 * node + 1], seg[2 * node + 2]);
     }
 
-    ll query(ll start, ll end, ll node, ll l, ll r) {
+    Node query(ll start, ll end, ll node, ll l, ll r) {
         if (r < start || l > end)
-            return 0;
+            return Node();
 
         if (start <= l && r <= end)
             return seg[node];
 
         ll mid = l + (r - l) / 2;
 
-        return query(start, end, 2 * node + 1, l, mid) +
-               query(start, end, 2 * node + 2, mid + 1, r);
+        return merge(
+            query(start, end, 2 * node + 1, l, mid),
+            query(start, end, 2 * node + 2, mid + 1, r)
+        );
     }
 
     void update(ll node, ll l, ll r, ll idx, ll val) {
         if (l == r) {
-            seg[node] = val;   // point assignment
+            seg[node] = Node(val);  // point assignment
             return;
         }
 
@@ -43,24 +62,24 @@ private:
         else
             update(2 * node + 2, mid + 1, r, idx, val);
 
-        seg[node] = seg[2 * node + 1] + seg[2 * node + 2];
+        seg[node] = merge(seg[2 * node + 1], seg[2 * node + 2]);
     }
 
 public:
     // Constructor with initial array
     SegmentTree(vector<ll>& ara) {
         n = ara.size();
-        seg.assign(4 * n, 0);
+        seg.assign(4 * n, Node());
         build(0, 0, n - 1, ara);
     }
 
     // Constructor with size n (all values = 0)
     SegmentTree(ll size) {
         n = size;
-        seg.assign(4 * n, 0);
+        seg.assign(4 * n, Node());
     }
 
-    ll query(ll l, ll r) {
+    Node query(ll l, ll r) {
         return query(l, r, 0, 0, n - 1);
     }
 
