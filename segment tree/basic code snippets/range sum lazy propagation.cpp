@@ -1,178 +1,231 @@
-#include <bits/stdc++.h>
-using namespace std;
 
-typedef long long ll;
-typedef vector<ll> vll;
-typedef vector<vector<ll>> vvll;
+struct Node {
+    ll sum = 0;
+
+    Node() {}
+
+    Node(ll val) {
+        sum = val;
+    }
+};
 
 class SegmentTree {
 private:
-    ll n = 0;
-    vll tree;
-    vll lazyAdd;             // pending range-add
-    vll lazyAssign;          // pending range-assign value
-    vector<bool> hasAssign;  // is an assign pending?
+    ll n;
+    vector<Node> seg;
 
-    bool validRange(ll l, ll r) const {
-        return !(l < 0 || r > n - 1 || l > r);
+    vll lazyAdd;
+    vll lazyAssign;
+    vector<bool> hasAssign;
+
+    // Merge two child nodes into one parent node
+    Node merge(Node a, Node b) {
+        Node res;
+        res.sum = a.sum + b.sum;
+        return res;
     }
 
-    void constructSTUtil(vll& arr, ll ss, ll se, ll si) {
-        if (ss > se) return;
+    // PUSH UP:
+    // Recalculate the parent using its two children.
+    // Called after building or updating child segments.
+    // Ensures the parent always contains the correct sum.
+    void pushUp(ll node) {
+        seg[node] = merge(
+            seg[2 * node + 1],
+            seg[2 * node + 2]
+        );
+    }
 
-        if (ss == se) {
-            tree[si] = arr[ss];
+    void build(ll node, ll l, ll r, vector<ll>& ara) {
+        if (l == r) {
+            seg[node] = Node(ara[l]);
             return;
         }
 
-        ll mid = (ss + se) / 2;
+        ll mid = l + (r - l) / 2;
 
-        constructSTUtil(arr, ss, mid, si * 2 + 1);
-        constructSTUtil(arr, mid + 1, se, si * 2 + 2);
+        build(2 * node + 1, l, mid, ara);
+        build(2 * node + 2, mid + 1, r, ara);
 
-        tree[si] = tree[si * 2 + 1] + tree[si * 2 + 2];
+        pushUp(node);
     }
 
-    void applyAssign(ll si, ll ss, ll se, ll x) {
-        tree[si] = (se - ss + 1) * x;
-        hasAssign[si] = true;
-        lazyAssign[si] = x;
-        lazyAdd[si] = 0;  // assign overrides any pending add
+    // Apply range assignment directly to a node.
+    // Every element in [l,r] becomes val.
+    void applyAssign(ll node, ll l, ll r, ll val) {
+        seg[node].sum = (r - l + 1) * val;
+
+        hasAssign[node] = true;
+        lazyAssign[node] = val;
+
+        // Assignment overrides all previous additions.
+        lazyAdd[node] = 0;
     }
 
-    void applyAdd(ll si, ll ss, ll se, ll diff) {
-        tree[si] += (se - ss + 1) * diff;
-        if (hasAssign[si]) lazyAssign[si] += diff;  // fold into assigned value
-        else lazyAdd[si] += diff;
-    }
+    // Apply range addition directly to a node.
+    // Every element in [l,r] increases by val.
+    void applyAdd(ll node, ll l, ll r, ll val) {
+        seg[node].sum += (r - l + 1) * val;
 
-    void pushDown(ll si, ll ss, ll se) {
-        if (ss == se) return;
-
-        ll mid = (ss + se) / 2;
-        ll L = si * 2 + 1, R = si * 2 + 2;
-
-        if (hasAssign[si]) {
-            applyAssign(L, ss, mid, lazyAssign[si]);
-            applyAssign(R, mid + 1, se, lazyAssign[si]);
-            hasAssign[si] = false;
-            lazyAssign[si] = 0;
+        if (hasAssign[node]) {
+            // An assignment is already pending.
+            // Example: assign 5, then add 3 = assign 8.
+            lazyAssign[node] += val;
         }
-
-        if (lazyAdd[si] != 0) {
-            applyAdd(L, ss, mid, lazyAdd[si]);
-            applyAdd(R, mid + 1, se, lazyAdd[si]);
-            lazyAdd[si] = 0;
+        else {
+            // Otherwise accumulate the pending addition.
+            lazyAdd[node] += val;
         }
     }
 
-    void updateRangeUtil(ll si, ll ss, ll se, ll us, ll ue, ll diff) {
-        if (ss > se || ss > ue || se < us) return;
+    // PUSH DOWN:
+    // Transfer pending lazy operations from parent to children.
+    //
+    // Why?
+    // The parent sum is already correct after a range update,
+    // but its children may still contain outdated values.
+    // Before visiting those children, propagate the updates.
+    //
+    // Example:
+    // Assign 5 to [0,7].
+    // Parent sum becomes 40, but children are not updated yet.
+    // When querying [0,3], pushDown updates the children first.
+    //
+    // Assignment must be propagated before addition.
+    void pushDown(ll node, ll l, ll r) {
+        if (l == r) return;
 
-        if (ss >= us && se <= ue) {
-            applyAdd(si, ss, se, diff);
+        ll mid = l + (r - l) / 2;
+
+        ll left = 2 * node + 1;
+        ll right = 2 * node + 2;
+
+        // First propagate pending assignment.
+        // This overrides any older updates in the children.
+        if (hasAssign[node]) {
+            applyAssign(left, l, mid, lazyAssign[node]);
+            applyAssign(right, mid + 1, r, lazyAssign[node]);
+
+            // Parent's assignment has been transferred.
+            hasAssign[node] = false;
+            lazyAssign[node] = 0;
+        }
+
+        // Then propagate pending addition, if any.
+        if (lazyAdd[node] != 0) {
+            applyAdd(left, l, mid, lazyAdd[node]);
+            applyAdd(right, mid + 1, r, lazyAdd[node]);
+
+            // Parent's addition has been transferred.
+            lazyAdd[node] = 0;
+        }
+    }
+
+    Node query(ll start, ll end, ll node, ll l, ll r) {
+        if (r < start || l > end)
+            return Node();
+
+        if (start <= l && r <= end)
+            return seg[node];
+
+        // Children must receive pending updates before querying.
+        pushDown(node, l, r);
+
+        ll mid = l + (r - l) / 2;
+
+        return merge(
+            query(start, end, 2 * node + 1, l, mid),
+            query(start, end, 2 * node + 2, mid + 1, r)
+        );
+    }
+
+    void updateRange(ll node, ll l, ll r,
+                     ll start, ll end, ll val) {
+
+        if (r < start || l > end)
+            return;
+
+        if (start <= l && r <= end) {
+            applyAdd(node, l, r, val);
             return;
         }
 
-        pushDown(si, ss, se);
+        // Push pending updates before modifying children.
+        pushDown(node, l, r);
 
-        ll mid = (ss + se) / 2;
-        updateRangeUtil(si * 2 + 1, ss, mid, us, ue, diff);
-        updateRangeUtil(si * 2 + 2, mid + 1, se, us, ue, diff);
+        ll mid = l + (r - l) / 2;
 
-        tree[si] = tree[si * 2 + 1] + tree[si * 2 + 2];
+        updateRange(2 * node + 1, l, mid, start, end, val);
+        updateRange(2 * node + 2, mid + 1, r, start, end, val);
+
+        // Recalculate parent after children have changed.
+        pushUp(node);
     }
 
-    void assignRangeUtil(ll si, ll ss, ll se, ll us, ll ue, ll x) {
-        if (ss > se || ss > ue || se < us) return;
+    void assignRange(ll node, ll l, ll r,
+                     ll start, ll end, ll val) {
 
-        if (ss >= us && se <= ue) {
-            applyAssign(si, ss, se, x);
+        if (r < start || l > end)
+            return;
+
+        if (start <= l && r <= end) {
+            applyAssign(node, l, r, val);
             return;
         }
 
-        pushDown(si, ss, se);
+        // Propagate older updates before applying new ones.
+        pushDown(node, l, r);
 
-        ll mid = (ss + se) / 2;
-        assignRangeUtil(si * 2 + 1, ss, mid, us, ue, x);
-        assignRangeUtil(si * 2 + 2, mid + 1, se, us, ue, x);
+        ll mid = l + (r - l) / 2;
 
-        tree[si] = tree[si * 2 + 1] + tree[si * 2 + 2];
-    }
+        assignRange(2 * node + 1, l, mid, start, end, val);
+        assignRange(2 * node + 2, mid + 1, r, start, end, val);
 
-    ll getSumUtil(ll ss, ll se, ll qs, ll qe, ll si) {
-        if (ss > se || ss > qe || se < qs) return 0;
-
-        if (ss >= qs && se <= qe) return tree[si];
-
-        pushDown(si, ss, se);
-
-        ll mid = (ss + se) / 2;
-        return getSumUtil(ss, mid, qs, qe, 2 * si + 1)
-             + getSumUtil(mid + 1, se, qs, qe, 2 * si + 2);
+        // Rebuild current node using updated children.
+        pushUp(node);
     }
 
 public:
-    SegmentTree() {}
-    SegmentTree(vll& arr) { build(arr); }
+    // Constructor with initial array
+    SegmentTree(vector<ll>& ara) {
+        n = ara.size();
 
-    // build the tree from an array
-    void build(vll& arr) {
-        n = arr.size();
-        tree.assign(4 * n, 0);
+        seg.assign(4 * n, Node());
         lazyAdd.assign(4 * n, 0);
         lazyAssign.assign(4 * n, 0);
         hasAssign.assign(4 * n, false);
 
-        constructSTUtil(arr, 0, n - 1, 0);
+        if (n > 0)
+            build(0, 0, n - 1, ara);
     }
 
-    // add diff to every element in [l, r]
-    void updateRange(ll l, ll r, ll diff) {
-        if (!validRange(l, r)) {
-            cout << "Invalid Input\n";
-            return;
-        }
-        updateRangeUtil(0, 0, n - 1, l, r, diff);
+    // Constructor with size n (all values = 0)
+    SegmentTree(ll size) {
+        n = size;
+
+        seg.assign(4 * n, Node());
+        lazyAdd.assign(4 * n, 0);
+        lazyAssign.assign(4 * n, 0);
+        hasAssign.assign(4 * n, false);
     }
 
-    // replace every element in [l, r] with x
-    void assignRange(ll l, ll r, ll x) {
-        if (!validRange(l, r)) {
-            cout << "Invalid Input\n";
-            return;
-        }
-        assignRangeUtil(0, 0, n - 1, l, r, x);
+    // Range sum query
+    Node query(ll l, ll r) {
+        return query(l, r, 0, 0, n - 1);
     }
 
-    // sum of elements in [l, r]
-    ll getSum(ll l, ll r) {
-        if (!validRange(l, r)) {
-            cout << "Invalid Input\n";
-            return -1;
-        }
-        return getSumUtil(0, n - 1, l, r, 0);
+    // Add val to every element in [l,r]
+    void updateRange(ll l, ll r, ll val) {
+        updateRange(0, 0, n - 1, l, r, val);
+    }
+
+    // Assign val to every element in [l,r]
+    void assignRange(ll l, ll r, ll val) {
+        assignRange(0, 0, n - 1, l, r, val);
+    }
+
+    // Point assignment
+    void update(ll idx, ll val) {
+        assignRange(idx, idx, val);
     }
 };
-
-
-int main(){
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-
-    ll n = 10;
-    vll arr(n);
-
-    SegmentTree st(arr);   // or: SegmentTree st; st.build(arr);
-
-    st.updateRange(2, 7, 5);
-    cout << st.getSum(0, 9) << endl;   // 30
-
-    st.assignRange(4, 8, 3);
-    cout << st.getSum(0, 9) << endl;   // 25
-
-    st.updateRange(3, 5, 2);
-    cout << st.getSum(0, 9) << endl;   // 31
-
-    cout << st.getSum(4, 6) << endl;   // 13
-}
