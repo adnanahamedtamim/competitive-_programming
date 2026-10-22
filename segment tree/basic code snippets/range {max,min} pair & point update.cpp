@@ -1,15 +1,31 @@
+
+struct Node {
+    ll mx = LLONG_MIN;
+    ll mn = LLONG_MAX;
+
+    Node() {}
+
+    Node(ll val) {
+        mx = val;
+        mn = val;
+    }
+};
+
 class SegmentTree {
 private:
     ll n;
-    vector<pair<ll, ll>> seg;   // {max, min}
+    vector<Node> seg;
 
-    pair<ll, ll> merge(pair<ll, ll> a, pair<ll, ll> b) {
-        return {max(a.first, b.first), min(a.second, b.second)};
+    Node merge(Node a, Node b) {
+        Node res;
+        res.mx = max(a.mx, b.mx);
+        res.mn = min(a.mn, b.mn);
+        return res;
     }
 
     void build(ll node, ll l, ll r, vector<ll>& ara) {
         if (l == r) {
-            seg[node] = {ara[l], ara[l]};
+            seg[node] = Node(ara[l]);
             return;
         }
 
@@ -21,12 +37,10 @@ private:
         seg[node] = merge(seg[2 * node + 1], seg[2 * node + 2]);
     }
 
-    pair<ll, ll> query(ll start, ll end, ll node, ll l, ll r) {
-        // No overlap
+    Node query(ll start, ll end, ll node, ll l, ll r) {
         if (r < start || l > end)
-            return {LLONG_MIN, LLONG_MAX};
+            return Node();
 
-        // Complete overlap
         if (start <= l && r <= end)
             return seg[node];
 
@@ -40,7 +54,7 @@ private:
 
     void update(ll node, ll l, ll r, ll idx, ll val) {
         if (l == r) {
-            seg[node] = {val, val};
+            seg[node] = Node(val);  // point assignment
             return;
         }
 
@@ -58,18 +72,18 @@ public:
     // Constructor with initial array
     SegmentTree(vector<ll>& ara) {
         n = ara.size();
-        seg.assign(4 * n, {LLONG_MIN, LLONG_MAX});
+        seg.assign(4 * n, Node());
         build(0, 0, n - 1, ara);
     }
 
     // Constructor with size n
     SegmentTree(ll size) {
         n = size;
-        seg.assign(4 * n, {LLONG_MIN, LLONG_MAX});
+        seg.assign(4 * n, Node());
     }
 
-    // Returns {max, min} in range [l, r]
-    pair<ll, ll> query(ll l, ll r) {
+    // Returns maximum and minimum in range [l, r]
+    Node query(ll l, ll r) {
         return query(l, r, 0, 0, n - 1);
     }
 
