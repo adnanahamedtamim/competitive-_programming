@@ -17,7 +17,7 @@ typedef long double ld;
 #define NO cout<<"NO"<<endl
 #define Yes cout<<"Yes"<<endl
 #define No cout<<"No"<<endl
-#define endl "\n"
+
  
 // #define isSet(x, i) ((x>>i)&1)
 // #define setbit(x, i) (x | (1LL<<i))
