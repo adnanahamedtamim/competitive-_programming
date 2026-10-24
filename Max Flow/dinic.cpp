@@ -13,7 +13,8 @@ struct Dinic {
     vector<vector<Edge>> adj;
     vector<ll> level, it;
 
-    Dinic(ll n) : n(n), adj(n), level(n), it(n) {}
+    // Pass n directly: allocates n + 1 so indices 1..n are valid
+    Dinic(ll n) : n(n), adj(n + 1), level(n + 1), it(n + 1) {}
 
     void add_edge(ll u, ll v, ll cap) {
         Edge a = {v, (ll)adj[v].size(), cap, 0};
@@ -59,10 +60,50 @@ struct Dinic {
         ll flow = 0;
         while (bfs(s, t)) {
             fill(it.begin(), it.end(), 0);
-            while (ll pushed = dfs(s, t, 1e18)) // Using a large ll constant
+            while (ll pushed = dfs(s, t, 1e18))
                 flow += pushed;
         }
         return flow;
+    }
+
+    void print_all_flows(bool only_positive = false) {
+        for (ll u = 1; u <= n; u++) {
+            for (auto &e : adj[u]) {
+                if (e.cap > 0) {
+                    if (only_positive && e.flow <= 0) continue;
+                    cout << u << " " << e.to << " " << e.flow << "/" << e.cap << "\n";
+                }
+            }
+        }
+    }
+
+    void print_min_cut(ll s) {
+        vector<ll> reach(n + 1, 0);
+        reach[s] = 1;
+        queue<ll> q;
+        q.push(s);
+
+        while (!q.empty()) {
+            ll i = q.front();
+            q.pop();
+
+            for (auto &it : adj[i]) {
+                if (it.cap - it.flow > 0 && !reach[it.to]) {
+                    reach[it.to] = 1;
+                    q.push(it.to);
+                }
+            }
+        }
+
+        for (ll u = 1; u <= n; u++) {
+            if (reach[u]) {
+                for (auto &e : adj[u]) {
+                    if (e.cap > 0 && !reach[e.to]) {
+                        cout << u << " " << e.to << "\n";
+                    }
+                }
+            }
+        }
     }
 };
 
@@ -72,48 +113,18 @@ int main() {
 
     ll n, m;
     if (!(cin >> n >> m)) return 0;
-    
-    Dinic dinic(n + 1);
+
+    Dinic dinic(n); // Strictly 1-based: just pass n!
 
     for (ll i = 0; i < m; i++) {
         ll a, b;
         cin >> a >> b;
         dinic.add_edge(a, b, 1);
+        dinic.add_edge(b, a, 1);
     }
 
-    ll maxPaths = dinic.maxflow(1, n);
-    cout << maxPaths << "\n";
+    cout << dinic.maxflow(1, n) << "\n";
+    dinic.print_min_cut(1);
 
-    vector<vector<ll>> routes;
-    
-    for (ll i = 0; i < maxPaths; i++) {
-        vector<ll> path;
-        ll cur = 1;
-        path.push_back(cur);
-        
-        while (cur != n) {
-            bool found = false;
-            for (auto &e : dinic.adj[cur]) {
-                if (e.flow > 0) {
-                    e.flow = 0; // Use flow and mark as consumed
-                    cur = e.to;
-                    path.push_back(cur);
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) break; 
-        }
-        routes.push_back(path);
-    }
-
-    for (auto &path : routes) {
-        cout << path.size() << "\n";
-        for (ll i = 0; i < (ll)path.size(); i++) {
-            cout << path[i] << (i == (ll)path.size() - 1 ? "" : " ");
-        }
-        cout << "\n";
-    }
-    
     return 0;
 }
