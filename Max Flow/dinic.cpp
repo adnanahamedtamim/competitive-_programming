@@ -99,7 +99,8 @@ struct Dinic {
     }
 
     // Time Complexity: O(V + E)
-    void print_min_cut(int s) {
+    void print_min_cut(int s) {  // min koita edge remove korle s and t disconnected hoi jabe , For finding Vertex Cut, vertex gulake split kore
+        // 2 ta kore vertex banabo , that's it
         vector<int> reach(n + 1, 0);
         int head = 0, tail = 0;
         q[tail++] = s;
