@@ -13,7 +13,7 @@ struct Dinic {
     vector<vector<Edge>> adj;
     vector<ll> level, it;
 
-    // Pass n directly: allocates n + 1 so indices 1..n are valid
+    // Allocates n + 1 so all indices from 0 to n (inclusive) are valid
     Dinic(ll n) : n(n), adj(n + 1), level(n + 1), it(n + 1) {}
 
     void add_edge(ll u, ll v, ll cap) {
@@ -67,7 +67,7 @@ struct Dinic {
     }
 
     void print_all_flows(bool only_positive = false) {
-        for (ll u = 1; u <= n; u++) {
+        for (ll u = 0; u <= n; u++) {
             for (auto &e : adj[u]) {
                 if (e.cap > 0) {
                     if (only_positive && e.flow <= 0) continue;
@@ -95,7 +95,7 @@ struct Dinic {
             }
         }
 
-        for (ll u = 1; u <= n; u++) {
+        for (ll u = 0; u <= n; u++) {
             if (reach[u]) {
                 for (auto &e : adj[u]) {
                     if (e.cap > 0 && !reach[e.to]) {
@@ -114,15 +114,18 @@ int main() {
     ll n, m;
     if (!(cin >> n >> m)) return 0;
 
-    Dinic dinic(n); // Strictly 1-based: just pass n!
+    Dinic dinic(n); // Supports nodes 0..n seamlessly!
 
     for (ll i = 0; i < m; i++) {
         ll a, b;
         cin >> a >> b;
+        // Example if converting 1-based input to 0-based (0 to n-1):
+        // a--; b--;
         dinic.add_edge(a, b, 1);
         dinic.add_edge(b, a, 1);
     }
 
+    // Works if you use 1..n (or 0..n-1 if you decrement input)
     cout << dinic.maxflow(1, n) << "\n";
     dinic.print_min_cut(1);
 
