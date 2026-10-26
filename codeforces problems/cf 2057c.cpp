@@ -8,11 +8,7 @@ typedef long double ld;
 
 #define pb push_back
 #define all(x) x.begin(), x.end()
-#define endl '\n'
-#define YES cout << "YES" << endl
-#define NO cout << "NO" << endl
-#define Yes cout << "Yes" << endl
-#define No cout << "No" << endl
+
 
 #define isSet(x, i) ((x >> i) & 1)
 // #define setbit(x, i) (x | (1LL<<i))
@@ -28,19 +24,6 @@ typedef vector<ll> vll;
 typedef vector<int> vi;
 typedef vector<vector<ll>> vvll;
 typedef vector<vector<int>> vvi;
-/*======================
-       ordered set for finding kth element in O(logn)
-       usage :: find_by_order(pos),,, return the ref to pos'th element(0 based) in the set
-               s.order_of_key(x);;; it returns the pos of x(0 based)-> number of elements smaller than x
-=======================*/
-// using namespace __gnu_pbds;
-
-// typedef tree<
-// int,
-// null_type,
-// less<int>,
-// rb_tree_tag,
-// tree_order_statistics_node_update> ordered_set;
 
 /*======================
         CONSTANTS
