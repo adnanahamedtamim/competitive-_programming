@@ -2,7 +2,6 @@
 #include <unordered_map>
 #include <chrono>
 using namespace std;
-
 typedef long long ll;
 typedef long double ld;
 
