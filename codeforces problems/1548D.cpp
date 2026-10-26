@@ -85,9 +85,6 @@ struct custom_hash {
 template <class K,class V>
 using umap = unordered_map<K,V,custom_hash>;
 
-/*======================
-    MODULAR ARITHMETIC
-=======================*/
 
 ll binexp(ll a,ll b){
     ll res = 1;
