@@ -239,12 +239,6 @@ void get_vector0based(vector<ll> &v)
         cin >> v[i];
 }
 
-void get_vector1based(vector<ll> &v)
-{
-    for (ll i = 1; i < v.size(); i++)
-        cin >> v[i];
-}
-
 // /*======================
 //     BIT TRICK UTILITY
 // =======================*/
