@@ -90,3 +90,46 @@ public:
         update(0, 0, n - 1, idx, val);
     }
 };
+
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    ll n;
+    cin >> n;
+
+    vector<ll> ara(n);
+    for (ll i = 0; i < n; i++) {
+        cin >> ara[i];
+    }
+
+    SegmentTree st(ara);
+
+    ll q;
+    cin >> q;
+
+    while (q--) {
+        ll type;
+        cin >> type;
+
+        if (type == 1) {
+            // Point update: index, new value
+            ll idx, val;
+            cin >> idx >> val;
+
+            st.update(idx, val);
+        }
+        else if (type == 2) {
+            // Range query: l, r (inclusive)
+            ll l, r;
+            cin >> l >> r;
+
+            Node ans = st.query(l, r);
+
+            cout << ans.mn << " " << ans.idx << '\n';
+        }
+    }
+
+    return 0;
+}
