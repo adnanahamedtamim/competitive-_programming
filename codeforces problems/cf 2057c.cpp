@@ -8,11 +8,7 @@ typedef long double ld;
 
 #define pb push_back
 #define all(x) x.begin(), x.end()
-#define endl '\n'
-#define YES cout << "YES" << endl
-#define NO cout << "NO" << endl
-#define Yes cout << "Yes" << endl
-#define No cout << "No" << endl
+
 
 #define isSet(x, i) ((x >> i) & 1)
 // #define setbit(x, i) (x | (1LL<<i))
