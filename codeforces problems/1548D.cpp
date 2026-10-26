@@ -41,6 +41,9 @@ const ld EPS = 1e-12;
 const int MAXN = 2e5 + 5;
 const int MAXSIEVE = 2e5 + 5;
 
+/*======================
+        FAST HASH
+=======================*/
 
 struct custom_hash {
     static uint64_t splitmix64(uint64_t x) {
@@ -85,6 +88,9 @@ struct custom_hash {
 template <class K,class V>
 using umap = unordered_map<K,V,custom_hash>;
 
+/*======================
+    MODULAR ARITHMETIC
+=======================*/
 
 ll binexp(ll a,ll b){
     ll res = 1;
