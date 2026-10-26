@@ -2,7 +2,6 @@
 #include <unordered_map>
 #include <chrono>
 using namespace std;
-
 typedef long long ll;
 typedef long double ld;
 
@@ -35,10 +34,6 @@ const ll MOD = 1000000007;
 
 // const int MAXN = 2e5 + 5;
 // const int MAXSIEVE = 1e6 + 5;
-
-// /*======================
-//         FAST HASH
-// // =======================*/
 
 struct custom_hash
 {
