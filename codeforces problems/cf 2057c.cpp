@@ -35,10 +35,6 @@ const ll MOD = 1000000007;
 // const int MAXN = 2e5 + 5;
 // const int MAXSIEVE = 1e6 + 5;
 
-// /*======================
-//         FAST HASH
-// // =======================*/
-
 struct custom_hash
 {
     static uint64_t splitmix64(uint64_t x)
