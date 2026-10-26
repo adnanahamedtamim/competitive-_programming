@@ -1,11 +1,12 @@
-
 struct Node {
     ll mn = LLONG_MAX;
+    ll idx = -1;
 
     Node() {}
 
-    Node(ll val) {
+    Node(ll val, ll ind) {
         mn = val;
+        idx = ind;
     }
 };
 
@@ -15,14 +16,14 @@ private:
     vector<Node> seg;
 
     Node merge(Node a, Node b) {
-        Node res;
-        res.mn = min(a.mn, b.mn);
-        return res;
+        if (a.mn <= b.mn)
+            return a;
+        return b;
     }
 
     void build(ll node, ll l, ll r, vector<ll>& ara) {
         if (l == r) {
-            seg[node] = Node(ara[l]);
+            seg[node] = Node(ara[l], l);
             return;
         }
 
@@ -31,7 +32,8 @@ private:
         build(2 * node + 1, l, mid, ara);
         build(2 * node + 2, mid + 1, r, ara);
 
-        seg[node] = merge(seg[2 * node + 1], seg[2 * node + 2]);
+        seg[node] = merge(seg[2 * node + 1],
+                          seg[2 * node + 2]);
     }
 
     Node query(ll start, ll end, ll node, ll l, ll r) {
@@ -51,7 +53,7 @@ private:
 
     void update(ll node, ll l, ll r, ll idx, ll val) {
         if (l == r) {
-            seg[node] = Node(val);  // point assignment
+            seg[node] = Node(val, l);
             return;
         }
 
@@ -62,21 +64,22 @@ private:
         else
             update(2 * node + 2, mid + 1, r, idx, val);
 
-        seg[node] = merge(seg[2 * node + 1], seg[2 * node + 2]);
+        seg[node] = merge(seg[2 * node + 1],
+                          seg[2 * node + 2]);
     }
 
 public:
-    // Constructor with initial array
     SegmentTree(vector<ll>& ara) {
         n = ara.size();
         seg.assign(4 * n, Node());
         build(0, 0, n - 1, ara);
     }
 
-    // Constructor with size n (all values initially = 0)
     SegmentTree(ll size) {
         n = size;
-        seg.assign(4 * n, Node(0));
+        seg.assign(4 * n, Node(0, -1));
+        // Use this constructor only when initializing
+        // a zero-filled tree; see note below.
     }
 
     Node query(ll l, ll r) {
