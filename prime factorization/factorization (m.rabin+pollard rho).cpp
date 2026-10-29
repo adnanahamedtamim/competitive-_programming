@@ -25,7 +25,7 @@ ull mod_pow(ull a, ull e, ull mod) {
 
 // ---------------- Miller-Rabin ----------------
 
-bool isPrime(ull n) {
+bool isPrime(ull n) {   // O(log^3n)
 
     if (n < 2) return false;
     if (n % 2 == 0) return n == 2;
@@ -72,7 +72,7 @@ bool isPrime(ull n) {
 
 // ---------------- Pollard Rho ----------------
 
-ull pollard(ull n) {
+ull pollard(ull n) { // 0(n^(1/4))
 
     if (n % 2 == 0)
         return 2;
