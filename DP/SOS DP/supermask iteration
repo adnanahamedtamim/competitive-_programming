@@ -1,0 +1,7 @@
+for (int m = 1; m < (1 << N); m++) {
+    for (int s = m; s > 0; s = (s - 1) & m) {
+        if (is_clique[s]) {
+            dp[m] = min(dp[m], 1 + dp[m ^ s]);
+        }
+    }
+}
