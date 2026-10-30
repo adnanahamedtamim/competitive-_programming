@@ -1,3 +1,4 @@
+#pragma GCC optimize("O3,unroll-loops")
 #include<bits/stdc++.h>
 #include <unordered_map>
 #include <chrono>
@@ -373,33 +374,27 @@ int main()
     ios_base::sync_with_stdio(false);
     cin.tie(NULL);
 
-   ll la,ra,ta,lb,rb,tb;
-   cin >> la >> ra >> ta;
-   cin >> lb >> rb >> tb;
+    ll t;
+  cin >> t;
 
-   ll lena=ra-la+1;
-   ll lenb=rb-lb+1;
+  for(ll tt=1;tt<=t;tt++){
+      cout << "Case " << tt << ": ";
+      ll n;
+      cin >> n;
+      vll ara(n);
+      get_vector0based(ara);
 
-  
-  ll ans=0;
-  ll t=gcd(ta,tb);
-  ll d=((lb-la)%t+t)%t;
+      ll ans=0;
 
+    //   for(ll i=0;i<n;i++){
+    //       cin >> ara[i];
+    //   }
 
-  auto calc = [&](ll x) { 
-    ll l=max(0LL,x);
-    ll r=min(lena,lenb+x);
-
-    ans=max(ans,r-l);
-  };
-
-
-
-  calc(d);
-  calc(d-t);
-
-  cout << ans << endl;
-
+      for(auto it : ara){
+          ans+=it;
+      }
+      cout << ans << endl;
+  }
 
 
     return 0;
