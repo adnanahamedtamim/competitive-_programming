@@ -36,7 +36,7 @@ bool add_constraint(int u, int v, long long w) {
     if (a == b)
         return diff[u] - diff[v] == w;
 
-    // Required difference: value[a] - value[b].
+    // Required difference: value[a] - value[b] 
     long long delta = w - diff[u] + diff[v];
 
     if (sz[a] < sz[b]) {
